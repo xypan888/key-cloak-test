@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  keycloak:
+    build:
+      context: .
+      dockerfile: keycloak/Dockerfile
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME: http://localhost:8080
+      KC_HEALTH_ENABLED: "true"
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET}
+      GREENU_BASE_URL: ${GREENU_BASE_URL:?Set GREENU_BASE_URL}
+      GREENU_API_KEY: ${GREENU_API_KEY:?Set GREENU_API_KEY}
+      GREENU_MERCHANT: ${GREENU_MERCHANT:-GreenAI}
+      GREENU_TIMEOUT_SECONDS: ${GREENU_TIMEOUT_SECONDS:-10}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      KEYCLOAK_ISSUER: ${KEYCLOAK_ISSUER:-http://localhost:8080/realms/replatform}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET}
+      RVM_API_KEY: ${RVM_API_KEY:?Set RVM_API_KEY}
+      RVM_BIN_ID: ${RVM_BIN_ID:?Set RVM_BIN_ID}
+      GREENU_BASE_URL: ${GREENU_BASE_URL:?Set GREENU_BASE_URL}
+      GREENU_API_KEY: ${GREENU_API_KEY:?Set GREENU_API_KEY}
+      GREENU_MERCHANT: ${GREENU_MERCHANT:-GreenAI}
+      GREENU_TIMEOUT_SECONDS: ${GREENU_TIMEOUT_SECONDS:-10}
+      DEPOSIT_DB: /data/deposits.sqlite3
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - backend-data:/data
+    depends_on:
+      - keycloak
+
+  greenu-mock:
+    profiles: ["mock"]
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["uvicorn", "app.mock_greenu:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+    environment:
+      GREENU_API_KEY: ${GREENU_API_KEY:?Set GREENU_API_KEY}
+      GREENU_ACCESS_CODE: ${GREENU_ACCESS_CODE:?Set GREENU_ACCESS_CODE for mock tests}
+
+volumes:
+  postgres-data:
+  backend-data:
