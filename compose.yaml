@@ -54,21 +54,12 @@ services:
       GREENU_TIMEOUT_SECONDS: ${GREENU_TIMEOUT_SECONDS:-10}
       DEPOSIT_DB: /data/deposits.sqlite3
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     volumes:
       - backend-data:/data
     depends_on:
       - keycloak
 
-  greenu-mock:
-    profiles: ["mock"]
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    command: ["uvicorn", "app.mock_greenu:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
-    environment:
-      GREENU_API_KEY: ${GREENU_API_KEY:?Set GREENU_API_KEY}
-      GREENU_ACCESS_CODE: ${GREENU_ACCESS_CODE:?Set GREENU_ACCESS_CODE for mock tests}
 
 volumes:
   postgres-data:

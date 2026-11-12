@@ -24,9 +24,8 @@ public final class GreenUClient {
     public Member verify(String code) throws Failure {
         String base = env("GREENU_BASE_URL").replaceAll("/+$", "");
         try {
-            URI uri = URI.create(base + "/recycle/member/" + code);
-            // Plain HTTP is allowed only for the bundled local mock.
-            if (!"https".equals(uri.getScheme()) && !("http".equals(uri.getScheme()) && "greenu-mock".equals(uri.getHost()))) {
+            URI uri = URI.create(base + "/member/" + code);
+            if (!"https".equals(uri.getScheme())) {
                 throw new Failure(false);
             }
             var request = HttpRequest.newBuilder(uri)

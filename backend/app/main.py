@@ -117,6 +117,9 @@ def deposit(body: Deposit, user: Annotated[dict, Depends(claims)],
     config = settings()
     payload = {"merchant": config.greenu_merchant, "binID": config.rvm_bin_id,
                "depositType": "quantity", "depositedItems": [item.model_dump() for item in body.depositedItems]}
+    base = config.greenu_base_url.rstrip("/")
+    if not base.startswith("https://"):
+        raise HTTPException(503, "GreenU URL must use HTTPS")
     fingerprint = hashlib.sha256(json.dumps([user["sub"], payload], sort_keys=True).encode()).hexdigest()
     db = ledger()
     try:
@@ -130,11 +133,8 @@ def deposit(body: Deposit, user: Annotated[dict, Depends(claims)],
             if row[1] == "success":
                 return json.loads(row[2])
             raise HTTPException(409, "Transaction already attempted; verify upstream status before retrying")
-        base = config.greenu_base_url.rstrip("/")
-        if not base.startswith("https://") and base != "http://greenu-mock:8000":
-            raise HTTPException(503, "GreenU URL must use HTTPS")
         try:
-            result = client.post(base + "/recycle/member/" + user["external_member_id"] + "/deposit",
+            result = client.post(base + "/member/" + user["external_member_id"] + "/deposit",
                                  headers={"api-key": config.greenu_api_key.get_secret_value()}, json=payload)
             data = result.json()
             if result.status_code == 200:

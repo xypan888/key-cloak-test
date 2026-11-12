@@ -2,28 +2,19 @@
 
 ## 启动
 
-先启动 Docker Desktop，然后执行：
+先启动 Docker Desktop，检查 `.env`（新环境可从 `.env.example` 复制）。
+
+- DEV：`GREENU_BASE_URL=https://apidev.hku.hk/greenu/vendor/api`
+- PROD：`GREENU_BASE_URL=https://api.hku.hk/greenu/vendor/api`
+
+填写对应环境的 `GREENU_API_KEY`、`RVM_BIN_ID` 和用于联调的 `GREENU_ACCESS_CODE`。基础地址保留到 `/vendor/api`，代码会拼接会员接口路径。
 
 ```bash
 cd /Users/greenai/Documents/project/keycloak-test
-docker compose --profile mock up -d --build
+docker compose up -d --build --remove-orphans
 ```
 
-默认使用本地模拟 GreenU。首次启动需等待 Keycloak 初始化完成。
-
-连接真实 HKU 时，修改 `.env` 中的配置：
-
-```dotenv
-GREENU_BASE_URL=https://<GreenU基础地址，不含/recycle/member>
-GREENU_API_KEY=<API key>
-GREENU_ACCESS_CODE=<当前有效的32位十六进制二维码凭证>
-RVM_BIN_ID=<回收机IMEI>
-```
-
-```bash
-docker compose stop greenu-mock
-docker compose up -d --build keycloak backend
-```
+首次启动需等待 Keycloak 初始化完成。本机 `.env` 使用后端端口 `8001`。如需更换端口，请同步修改 `BACKEND_PORT` 和 `BACKEND_URL`。
 
 验证登录：`python3 scripts/smoke.py`。脚本读取 `.env` 的二维码凭证，不提交回收交易。
 
@@ -31,13 +22,13 @@ docker compose up -d --build keycloak backend
 
 ## Swagger 和管理台
 
-- [Swagger 接口文档](http://localhost:8000/docs)：可直接调用下面的 API。
+- [Swagger 接口文档](http://localhost:8001/docs)：可直接调用下面的 API。
 - [Keycloak 管理台](http://localhost:8080/admin/)：账号和密码对应 `.env` 的 `KEYCLOAK_ADMIN`、`KEYCLOAK_ADMIN_PASSWORD`。
 - 登录管理台后选择 **replatform** Realm，再进入 **Clients → rvm-auth-backend** 或 **Users**。
 
 ## API 说明
 
-后端地址：`http://localhost:8000`。以下认证及交易接口均需请求头 `X-RVM-API-Key: <.env中的RVM_API_KEY>`。
+后端地址：`http://localhost:8001`。以下认证及交易接口均需请求头 `X-RVM-API-Key: <.env中的RVM_API_KEY>`。
 
 ### POST /auth/qr — 扫码登录
 
