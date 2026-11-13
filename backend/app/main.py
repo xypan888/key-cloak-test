@@ -4,7 +4,7 @@ import re
 import secrets
 import sqlite3
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 import httpx
 import jwt
@@ -95,12 +95,14 @@ def me(user: Annotated[dict, Depends(claims)]):
 
 class Item(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    recyclableType: str = Field(min_length=1, max_length=100)
+    recyclableType: Literal["Plastic Bottle", "Metal Can"]
     quantity: StrictInt = Field(gt=0, le=10000)
 
 
 class Deposit(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    memberID: str = Field(pattern=r"^[A-Za-z0-9-]{1,36}$")
+    binID: str = Field(pattern=r"^[0-9]{15}$")
     depositedItems: list[Item] = Field(min_length=1, max_length=100)
 
 
@@ -115,7 +117,9 @@ def deposit(body: Deposit, user: Annotated[dict, Depends(claims)],
             client: Annotated[httpx.Client, Depends(upstream_client)],
             idempotency_key: Annotated[str, Header(min_length=8, max_length=128)]):
     config = settings()
-    payload = {"merchant": config.greenu_merchant, "binID": config.rvm_bin_id,
+    if body.memberID != user["external_member_id"]:
+        raise HTTPException(403, "memberID does not match the authenticated member")
+    payload = {"merchant": config.greenu_merchant, "binID": body.binID,
                "depositType": "quantity", "depositedItems": [item.model_dump() for item in body.depositedItems]}
     base = config.greenu_base_url.rstrip("/")
     if not base.startswith("https://"):
@@ -134,8 +138,11 @@ def deposit(body: Deposit, user: Annotated[dict, Depends(claims)],
                 return json.loads(row[2])
             raise HTTPException(409, "Transaction already attempted; verify upstream status before retrying")
         try:
-            result = client.post(base + "/member/" + user["external_member_id"] + "/deposit",
-                                 headers={"api-key": config.greenu_api_key.get_secret_value()}, json=payload)
+            result = client.post(base + "/member/" + body.memberID + "/deposit",
+                                 headers={
+                                     "api-key": config.greenu_api_key.get_secret_value(),
+                                     "Content-Type": "application/json",
+                                 }, json=payload)
             data = result.json()
             if result.status_code == 200:
                 if (not isinstance(data, dict) or type(data.get("pointsEarned")) is not int or type(data.get("memberBalanceUpdated")) is not int):

@@ -76,7 +76,11 @@ public final class GreenUGrant extends OAuth2GrantTypeBase {
         AuthenticationManager.setClientScopesInSession(session, auth);
         var clientSession = TokenManager.attachAuthenticationSession(session, userSession, auth);
         updateUserSessionFromClientAuth(userSession);
-        memberDisplay = Map.of("maskedInfo", member.maskedInfo(), "balance", member.balance());
+        memberDisplay = Map.of(
+            "memberId", member.id(),
+            "maskedInfo", member.maskedInfo(),
+            "balance", member.balance()
+        );
         return createTokenResponse(user, userSession, clientSession, "", false, null);
     }
     @Override protected void addCustomTokenResponseClaims(AccessTokenResponse response, ClientSessionContext context) {

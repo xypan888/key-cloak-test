@@ -7,7 +7,7 @@
 - DEV：`GREENU_BASE_URL=https://apidev.hku.hk/greenu/vendor/api`
 - PROD：`GREENU_BASE_URL=https://api.hku.hk/greenu/vendor/api`
 
-填写对应环境的 `GREENU_API_KEY`、`RVM_BIN_ID` 和用于联调的 `GREENU_ACCESS_CODE`。基础地址保留到 `/vendor/api`，代码会拼接会员接口路径。
+填写对应环境的 `GREENU_API_KEY` 和用于联调的 `GREENU_ACCESS_CODE`。基础地址保留到 `/vendor/api`，代码会拼接会员接口路径。
 
 ```bash
 cd /Users/greenai/Documents/project/keycloak-test
@@ -41,7 +41,7 @@ docker compose up -d --build --remove-orphans
 成功响应：
 
 ```json
-{"accessToken":"...","expiresIn":180,"tokenType":"Bearer","member":{"maskedInfo":"C*** T** M**","balance":386}}
+{"accessToken":"...","expiresIn":180,"tokenType":"Bearer","member":{"memberId":"12AB34CD56EF78GH","maskedInfo":"C*** T** M**","balance":386}}
 ```
 
 Token 有效期为 180 秒。无效会员凭证返回 `401`，参数错误返回 `422`，认证服务不可用返回 `503`。
@@ -69,10 +69,10 @@ Content-Type: application/json
 请求体：
 
 ```json
-{"depositedItems":[{"recyclableType":"Plastic Bottles","quantity":2}]}
+{"memberID":"12AB34CD56EF78GH","binID":"868618051694099","depositedItems":[{"recyclableType":"Plastic Bottle","quantity":2}]}
 ```
 
-后端使用 Token 中的会员身份及配置中的回收机编号调用 GreenU，由 GreenU 计算积分。真实环境会增加会员积分。
+`memberID` 填扫码返回的 `member.memberId`，须与 Token 中的会员 ID 一致。`binID` 在每笔交易的请求体中填写设备的 15 位 IMEI，无需在 `.env` 配置。回收物类型仅支持 `Plastic Bottle` 和 `Metal Can`。后端使用会员 ID 构造 GreenU deposit 路径，将 `binID` 和回收物明细发给 GreenU 计算积分。真实环境会增加会员积分。
 
 成功响应示例（积分以 GreenU 返回为准）：
 

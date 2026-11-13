@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     keycloak_internal_url: str = "http://keycloak:8080"
     keycloak_client_secret: SecretStr
     rvm_api_key: SecretStr
-    rvm_bin_id: str
     greenu_base_url: str
     greenu_api_key: SecretStr
     greenu_merchant: str = "GreenAI"
